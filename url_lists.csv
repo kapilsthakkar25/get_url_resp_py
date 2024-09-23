@@ -1,0 +1,5 @@
+Name,URL
+Example Site 1,https://www.example.com
+Example Site 2,https://www.nonexistentwebsite.com
+Example Site 3,https://expired.badssl.com
+Example Site 4,https://self-signed.badssl.com
