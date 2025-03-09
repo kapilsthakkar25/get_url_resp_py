@@ -4,121 +4,108 @@ import random
 import argparse
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.edge.service import Service
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.edge.options import Options
-from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/119.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Edge/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.192 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36",
 ]
 
 LOGIN_KEYWORDS = ["login", "sign-in", "authenticate", "session"]
 
 def setup_driver():
-    """Setup Edge WebDriver without using subprocess.Popen."""
-    edge_options = Options()
-    edge_options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
-    edge_options.add_argument("--headless")  # Run in headless mode
-    edge_options.add_argument("--disable-gpu")
-    edge_options.add_argument("--disable-blink-features=AutomationControlled")
+    """Initialize Edge WebDriver with options."""
+    options = Options()
+    options.add_argument("--headless=new")  # Run in headless mode
+    options.add_argument("--disable-gpu")
+    options.add_argument("--ignore-certificate-errors")
+    options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
     
-    driver_path = "C:/temp/msedgedriver.exe"  # Ensure this path is correct
-    
-    # Start WebDriver without using subprocess
-    try:
-        service = Service(driver_path)
-        driver = webdriver.Edge(service=service, options=edge_options)
-        return driver
-    except WebDriverException as e:
-        print(f"Error initializing Edge WebDriver: {e}")
-        exit(1)
+    return webdriver.Edge(options=options)
+
+def detect_login_page(driver):
+    """Detect if the page is a login page."""
+    current_url = driver.current_url.lower()
+    page_source = driver.page_source.lower()
+    return any(keyword in current_url for keyword in LOGIN_KEYWORDS) or "password" in page_source
 
 def login(driver, login_url, username, password):
-    """Perform login and return driver session."""
+    """Perform login and maintain session."""
     try:
         driver.get(login_url)
-        time.sleep(2)
+        time.sleep(2)  # Allow time for redirection
 
-        if any(keyword in driver.current_url.lower() for keyword in LOGIN_KEYWORDS) or "password" in driver.page_source.lower():
-            try:
-                user_field = driver.find_element(By.NAME, "userIdLogin")
-                pass_field = driver.find_element(By.NAME, "passwordLogin")
-            except NoSuchElementException:
-                print("Login fields not found.")
-                return False
-            
-            user_field.send_keys(username)
-            pass_field.send_keys(password)
-            pass_field.send_keys(Keys.RETURN)  # Press Enter
-            time.sleep(3)
+        if detect_login_page(driver):
+            username_field = driver.find_element(By.NAME, "userIdLogin")
+            password_field = driver.find_element(By.NAME, "passwordLogin")
 
-            if any(keyword in driver.current_url.lower() for keyword in LOGIN_KEYWORDS) or "password" in driver.page_source.lower():
-                print("Login failed.")
+            username_field.send_keys(username)
+            password_field.send_keys(password)
+            password_field.send_keys(Keys.RETURN)
+
+            time.sleep(3)  # Wait for login processing
+
+            if detect_login_page(driver):
+                print("Login failed. Please check credentials.")
                 return False
         return True
-    except TimeoutException:
-        print("Timeout error during login.")
-        return False
     except Exception as e:
-        print(f"Unexpected error during login: {e}")
+        print(f"Error during login: {e}")
         return False
 
 def get_all_links(driver, main_url):
-    """Extract all hyperlinks from a webpage."""
+    """Extract all hyperlinks from the webpage."""
     try:
         driver.get(main_url)
-        time.sleep(2)
+        time.sleep(2)  # Allow page to load
 
-        if any(keyword in driver.current_url.lower() for keyword in LOGIN_KEYWORDS):
+        if detect_login_page(driver):
             return [(main_url, main_url, "Redirected to login page", "Skipped")]
 
-        links = driver.find_elements(By.TAG_NAME, "a")
-        result = [(main_url, link.get_attribute("href"), link.text.strip() or "[No Text]", "Pending") for link in links if link.get_attribute("href")]
-        return result
+        links = [(a.get_attribute("href"), a.text.strip() or "[No Text]") for a in driver.find_elements(By.TAG_NAME, "a") if a.get_attribute("href")]
+        return [(main_url, link, text, "Pending") for link, text in set(links)]
     except Exception as e:
-        print(f"Error extracting links: {e}")
-        return [(main_url, main_url, "Main page inaccessible", "N/A")]
+        return [(main_url, main_url, f"Main page error: {str(e)}", "N/A")]
 
 def check_url(driver, data):
-    """Check if a link is accessible."""
+    """Check if a link is accessible and return its status."""
     main_url, url, anchor_text, _ = data
-    if not url:
-        return main_url, url, anchor_text, "N/A"
-    
     try:
         driver.get(url)
-        time.sleep(2)
+        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+
+        if detect_login_page(driver):
+            return main_url, url, anchor_text, "Skipped (Login)"
         
-        if any(keyword in driver.current_url.lower() for keyword in LOGIN_KEYWORDS):
-            return main_url, url, anchor_text, "Skipped (Login Required)"
-        return main_url, url, anchor_text, "Accessible"
-    except Exception:
-        return main_url, url, anchor_text, "N/A"
+        return main_url, url, anchor_text, "200 OK"
+    except Exception as e:
+        return main_url, url, anchor_text, f"Error: {str(e)}"
 
 def read_main_urls(file_path):
-    """Read URLs and credentials from CSV."""
+    """Read main URLs and credentials from CSV."""
     with open(file_path, newline='', encoding='utf-8') as csvfile:
         reader = csv.reader(csvfile)
-        next(reader)
-        return [(row[0], row[1], row[2], row[3], row[4]) for row in reader if len(row) >= 5]
+        next(reader)  # Skip header
+        return [(row[0], row[1], row[2], row[3], row[4]) for row in reader if len(row) >= 5]  # (Name, Login URL, Username, Password, Target URL)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--username", type=str, help="Username for login")
     parser.add_argument("--password", type=str, help="Password for login")
-    parser.add_argument("--broken-only", action="store_true", help="Generate report only for broken links")
+    parser.add_argument("--broken-only", action="store_true", help="Generate report only for broken links (errors)")
     args = parser.parse_args()
 
     input_csv = "urls.csv"
     output_csv = "broken_links_report.csv" if args.broken_only else "all_links_report.csv"
-    
     main_data = read_main_urls(input_csv)
 
     driver = setup_driver()
-    all_links = []
 
+    all_links = []
     for data in main_data:
         if not login(driver, data[1], data[2], data[3]):
             print(f"Skipping {data[4]} due to login failure.")
@@ -128,15 +115,15 @@ def main():
     checked_links = [check_url(driver, link) for link in all_links]
 
     if args.broken_only:
-        checked_links = [link for link in checked_links if link[3] == "N/A"]
+        checked_links = [link for link in checked_links if "Error" in link[3] or link[3] != "200 OK"]
 
     with open(output_csv, mode='w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Main URL", "Link", "Anchor Text", "Status"])
+        writer.writerow(["Main URL", "Link", "Anchor Text", "Status Code"])
         writer.writerows(checked_links)
 
-    driver.quit()
     print(f"Report generated: {output_csv}")
+    driver.quit()
 
 if __name__ == "__main__":
     main()
