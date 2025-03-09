@@ -1,16 +1,25 @@
+import time
+import pandas as pd
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
+
+# Load the CSV file
+df = pd.read_csv('urls.csv')
 
 # Set up the Chrome driver
 driver = webdriver.Chrome()
 
-# Load the Google homepage
-driver.get("https://www.google.com")
+# Iterate through the rows in the CSV
+for index, row in df.iterrows():
+    name = row['Name']
+    url = row['URL']
+    
+    print(f"Opening {name} - {url}")
+    
+    # Open the URL
+    driver.get(url)
+    
+    # Keep the page open for 5 seconds
+    time.sleep(5)
 
-# Search for "seleniumhq"
-search_box = driver.find_element("name", "q")
-search_box.send_keys("seleniumhq")
-search_box.send_keys(Keys.RETURN)
-
-# Close the browser
+# Close the browser after opening all pages
 driver.quit()
