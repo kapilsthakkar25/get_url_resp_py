@@ -4,46 +4,42 @@ import random
 import argparse
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.edge.service import Service
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.edge.options import Options
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
 
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.192 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Edge/119.0.0.0 Safari/537.36",
 ]
 
 LOGIN_KEYWORDS = ["login", "sign-in", "authenticate", "session"]
 
 def setup_driver():
-    """Setup Chrome WebDriver with options."""
-    chrome_options = Options()
-    chrome_options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")  # Prevent detection
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--headless")  # Run in headless mode
-
-    driver_path = "C:/temp/chromedriver.exe"  # Ensure this path is correct
-    service = Service(driver_path)
+    """Setup Edge WebDriver."""
+    edge_options = Options()
+    edge_options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
+    edge_options.add_argument("--headless")  # Run in headless mode
+    edge_options.add_argument("--disable-gpu")
+    edge_options.add_argument("--disable-blink-features=AutomationControlled")
     
+    driver_path = "C:/temp/msedgedriver.exe"  # Ensure this path is correct
+    service = Service(driver_path)
+
     try:
-        driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver = webdriver.Edge(service=service, options=edge_options)
         return driver
     except WebDriverException as e:
-        print(f"Error initializing WebDriver: {e}")
+        print(f"Error initializing Edge WebDriver: {e}")
         exit(1)
 
 def login(driver, login_url, username, password):
     """Perform login and return driver session."""
     try:
         driver.get(login_url)
-        time.sleep(2)  # Wait for page to load
+        time.sleep(2)
 
-        # Check if it's a login page
         if any(keyword in driver.current_url.lower() for keyword in LOGIN_KEYWORDS) or "password" in driver.page_source.lower():
             try:
                 user_field = driver.find_element(By.NAME, "userIdLogin")
@@ -55,11 +51,10 @@ def login(driver, login_url, username, password):
             user_field.send_keys(username)
             pass_field.send_keys(password)
             pass_field.send_keys(Keys.RETURN)  # Press Enter
-            time.sleep(3)  # Wait for login response
-            
-            # Check if login was successful
+            time.sleep(3)
+
             if any(keyword in driver.current_url.lower() for keyword in LOGIN_KEYWORDS) or "password" in driver.page_source.lower():
-                print("Login failed. Please check credentials.")
+                print("Login failed.")
                 return False
         return True
     except TimeoutException:
@@ -70,10 +65,10 @@ def login(driver, login_url, username, password):
         return False
 
 def get_all_links(driver, main_url):
-    """Extract all hyperlinks from the given webpage."""
+    """Extract all hyperlinks from a webpage."""
     try:
         driver.get(main_url)
-        time.sleep(2)  # Allow page to load
+        time.sleep(2)
 
         if any(keyword in driver.current_url.lower() for keyword in LOGIN_KEYWORDS):
             return [(main_url, main_url, "Redirected to login page", "Skipped")]
@@ -86,7 +81,7 @@ def get_all_links(driver, main_url):
         return [(main_url, main_url, "Main page inaccessible", "N/A")]
 
 def check_url(driver, data):
-    """Check if a link is accessible and return its status."""
+    """Check if a link is accessible."""
     main_url, url, anchor_text, _ = data
     if not url:
         return main_url, url, anchor_text, "N/A"
@@ -105,7 +100,7 @@ def read_main_urls(file_path):
     """Read URLs and credentials from CSV."""
     with open(file_path, newline='', encoding='utf-8') as csvfile:
         reader = csv.reader(csvfile)
-        next(reader)  # Skip header
+        next(reader)
         return [(row[0], row[1], row[2], row[3], row[4]) for row in reader if len(row) >= 5]
 
 def main():
