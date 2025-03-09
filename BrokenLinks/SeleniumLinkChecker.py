@@ -17,7 +17,7 @@ USER_AGENTS = [
 LOGIN_KEYWORDS = ["login", "sign-in", "authenticate", "session"]
 
 def setup_driver():
-    """Setup Edge WebDriver."""
+    """Setup Edge WebDriver without using subprocess.Popen."""
     edge_options = Options()
     edge_options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
     edge_options.add_argument("--headless")  # Run in headless mode
@@ -25,9 +25,10 @@ def setup_driver():
     edge_options.add_argument("--disable-blink-features=AutomationControlled")
     
     driver_path = "C:/temp/msedgedriver.exe"  # Ensure this path is correct
-    service = Service(driver_path)
-
+    
+    # Start WebDriver without using subprocess
     try:
+        service = Service(driver_path)
         driver = webdriver.Edge(service=service, options=edge_options)
         return driver
     except WebDriverException as e:
