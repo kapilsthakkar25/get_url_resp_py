@@ -1,25 +1,27 @@
-import time
-import pandas as pd
+import csv
 from selenium import webdriver
+from selenium.webdriver.edge.service import Service
+from selenium.webdriver.common.by import By
+import time
 
-# Load the CSV file
-df = pd.read_csv('urls.csv')
+# Path to Edge WebDriver
+edge_driver_path = "C:\\temp\\msedgedriver.exe"
+service = Service(edge_driver_path)
 
-# Set up the Chrome driver
-driver = webdriver.Chrome()
-
-# Iterate through the rows in the CSV
-for index, row in df.iterrows():
-    name = row['Name']
-    url = row['URL']
+# Read CSV file
+csv_file = "urls.csv"
+with open(csv_file, newline='', encoding='utf-8') as file:
+    reader = csv.reader(file)
+    next(reader)  # Skip header row if present
     
-    print(f"Opening {name} - {url}")
+    # Start WebDriver
+    driver = webdriver.Edge(service=service)
     
-    # Open the URL
-    driver.get(url)
+    for row in reader:
+        name, url = row
+        print(f"Opening {name}: {url}")
+        driver.get(url)
+        time.sleep(3)  # Wait for the page to load
+        print(f"Title: {driver.title}")
     
-    # Keep the page open for 5 seconds
-    time.sleep(5)
-
-# Close the browser after opening all pages
-driver.quit()
+    driver.quit()
