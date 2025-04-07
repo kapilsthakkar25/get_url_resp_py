@@ -55,6 +55,25 @@ az repos ref update \
 
 Make sure you have installed the [Azure DevOps extension](https://learn.microsoft.com/en-us/azure/devops/cli/?view=azure-devops).
 
+Problem Statement: Automating Branch Locking in Azure DevOps
+In Azure DevOps (ADO), branches—especially critical ones like main or release—must be protected to prevent unintended changes after key milestones such as production deployments or code freezes. Currently, branch locking is a manual process, which is prone to human error and delays, leading to potential risks such as:
+
+Unauthorized code pushes after deployment.
+
+Inconsistent enforcement of branch protection.
+
+Increased manual overhead for DevOps and project teams.
+
+To mitigate these risks, there is a need to automate branch locking in ADO using scripts or pipelines. The solution should:
+
+Programmatically lock a branch to prevent any direct commits or pushes.
+
+Be triggered automatically, such as post-deployment or at the end of a sprint.
+
+Optionally integrate into existing Azure DevOps Pipelines for CI/CD.
+
+By automating this, teams can ensure consistent enforcement of branch protection policies, improve release governance, and reduce manual intervention.
+
 ---
 
 Let me know if you want this scheduled or triggered post-release, or as part of a branch protection flow.
