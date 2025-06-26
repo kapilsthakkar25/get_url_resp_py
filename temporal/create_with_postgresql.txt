@@ -1,0 +1,74 @@
+To use an **existing PostgreSQL instance** with Temporal on OpenShift and **create the required schema**, here’s a step-by-step guide tailored for your setup:
+
+---
+
+### ✅ Step 1: Prepare PostgreSQL Connection Details
+
+Make sure you have:
+- Hostname or IP of the PostgreSQL server
+- Port (default is `5432`)
+- Database name (e.g., `temporal`)
+- Username and password with privileges to create schemas and tables
+
+---
+
+### 🛠️ Step 2: Create the Temporal Schema in PostgreSQL
+
+Temporal provides SQL scripts to initialize the schema. You can run them manually or automate them.
+
+#### Option A: Manually using `psql`
+
+1. Clone the Temporal GitHub repo:
+   ```bash
+   git clone https://github.com/temporalio/temporal.git
+   cd temporal/schema/postgresql
+   ```
+
+2. Run the schema creation script:
+   ```bash
+   psql -h <host> -U <user> -d <database> -f temporal/schema/postgresql/postgres-schema.sql
+   psql -h <host> -U <user> -d <database> -f temporal/schema/postgresql/postgres-visibility-schema.sql
+   ```
+
+#### Option B: Use Temporal's Schema Tool (Optional)
+
+Temporal provides a CLI tool to manage schema migrations:
+```bash
+temporal-sql-tool --plugin postgres --ep <host>:<port> --db <database> --user <user> --pw <password> create-schema -f schema/postgresql
+```
+
+---
+
+### ⚙️ Step 3: Configure Helm Chart to Use External PostgreSQL
+
+When installing Temporal via Helm, override the default database settings:
+
+```bash
+helm install temporal temporal/temporal \
+  --set server.persistence.default.driver=sql \
+  --set server.persistence.default.sql.pluginName=postgres \
+  --set server.persistence.default.sql.host=<host> \
+  --set server.persistence.default.sql.port=<port> \
+  --set server.persistence.default.sql.database=<database> \
+  --set server.persistence.default.sql.user=<user> \
+  --set server.persistence.default.sql.password=<password> \
+  --set server.persistence.visibility.driver=sql \
+  --set server.persistence.visibility.sql.pluginName=postgres \
+  --set server.persistence.visibility.sql.host=<host> \
+  --set server.persistence.visibility.sql.port=<port> \
+  --set server.persistence.visibility.sql.database=<database> \
+  --set server.persistence.visibility.sql.user=<user> \
+  --set server.persistence.visibility.sql.password=<password>
+```
+
+You can also use a `values.yaml` file for better management.
+
+---
+
+### 🔐 Security Tip
+
+Avoid hardcoding credentials in Helm commands. Use Kubernetes secrets and reference them in your Helm values.
+
+---
+
+Would you like help generating a `values.yaml` file for this setup or a Kubernetes Secret manifest for the PostgreSQL credentials?
